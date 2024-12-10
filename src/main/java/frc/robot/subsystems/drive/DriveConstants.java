@@ -77,6 +77,7 @@ public class DriveConstants
         private static final double kSteerInertia = 0.004;
         private static final double kDriveInertia = 0.025;
         public static final double turnSimP = 0.5;
+        public static final double turnSimD = 0.5;
         public static final double driveSimP = 0.5;
         public static final double driveSimD = 0.0;
         // Simulated voltage necessary to overcome friction
@@ -140,7 +141,8 @@ public class DriveConstants
            public static final double robotMassKg = 25.8;
            public static final double robotMOI = 6.883;
            public static final double wheelCOF = 1.2;
-           public static final DCMotor driveGearbox = DCMotor.getNEO(1);
+           public static final DCMotor driveGearbox = DCMotor.getKrakenX60(1);
+           public static final DCMotor steerGearbox = DCMotor.getNEO(1);
            public static final RobotConfig ppConfig =
            new RobotConfig(
                robotMassKg,
