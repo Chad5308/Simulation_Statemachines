@@ -13,8 +13,11 @@ import static frc.robot.subsystems.drive.DriveConstants.kFrontRightDriveMotorId;
 import static frc.robot.subsystems.drive.DriveConstants.kBackLeftDriveMotorId;
 import static frc.robot.subsystems.drive.DriveConstants.kBackRightDriveMotorId;
 
+import static frc.robot.util.DriveUtil.*;
+
 
 import java.util.Queue;
+import java.util.function.DoubleSupplier;
 
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
@@ -49,9 +52,11 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Voltage;
 import frc.robot.subsystems.drive.DriveConstants;
 import frc.robot.subsystems.drive.DriveOdometry;
+import frc.robot.subsystems.simulation.ModuleIO.ModuleIOInputs;
+import frc.robot.util.DriveUtil;
 import frc.robot.util.DriveUtil.talonUtil;
 
-public class ModuleIODrive
+public class ModuleIODrive implements ModuleIO
 {
     private final SwerveModuleConstants constants;
     private final Rotation2d zeroRotation;
@@ -97,39 +102,41 @@ public class ModuleIODrive
     // Connection debouncers
     private final Debouncer driveConnectedDebounce = new Debouncer(0.5);
     private final Debouncer turnConnectedDebounce = new Debouncer(0.5);
-    private final Debouncer turnEncoderConnectedDebounce = new Debouncer(0.5);
+    private final Debouncer cancoderConnectedDebounce = new Debouncer(0.5);
 
     public ModuleIODrive(SwerveModuleConstants constants, int module)
     {
         
         zeroRotation =
-        switch (module) {
+        switch (module)
+        {
             case 0 -> kFrontLeftZeroRotation;
             case 1 -> kFrontRightZeroRotation;
             case 2 -> kBackLeftZeroRotation;
             case 3 -> kBackRightZeroRotation;
             default -> new Rotation2d();
         };
+
         driveTalon =
         new TalonFX(
-            switch (module) {
+            switch (module)
+            {
                 case 0 -> kFrontLeftDriveMotorId;
                 case 1 -> kFrontRightDriveMotorId;
                 case 2 -> kBackLeftDriveMotorId;
                 case 3 -> kBackRightDriveMotorId;
                 default -> 0;
-            },
-            DriveConstants.DrivetrainConstants.CANBusName);
-            turnNEO =
-            new SparkMax(
-                switch (module) {
-                    case 0 -> kFrontLeftSteerMotorId;
-                    case 1 -> kFrontRightSteerMotorId;
-                    case 2 -> kBackLeftSteerMotorId;
-                    case 3 -> kBackRightSteerMotorId;
-                    default -> 0;
-                },
-                MotorType.kBrushless);
+            }, DriveConstants.kCANBus.getName());
+        turnNEO =
+        new SparkMax(
+            switch (module)
+            {
+                case 0 -> kFrontLeftSteerMotorId;
+                case 1 -> kFrontRightSteerMotorId;
+                case 2 -> kBackLeftSteerMotorId;
+                case 3 -> kBackRightSteerMotorId;
+                default -> 0;
+            }, MotorType.kBrushless);
                 
                 
                 
@@ -172,9 +179,9 @@ public class ModuleIODrive
             .voltageCompensation(12.0);
         turnConfig
             .absoluteEncoder
-            .inverted(turnEncoderInverted)
-            .positionConversionFactor(turnEncoderPositionFactor)
-            .velocityConversionFactor(turnEncoderVelocityFactor)
+            .inverted(cancoderInverted)
+            .positionConversionFactor(cancoderPositionFactor)
+            .velocityConversionFactor(cancoderVelocityFactor)
             .averageDepth(2);
         turnConfig
             .closedLoop
@@ -192,10 +199,10 @@ public class ModuleIODrive
             .busVoltagePeriodMs(20)
             .outputCurrentPeriodMs(20);
         tryUntilOk(
-            turnSpark,
+            turnNEO,
             5,
             () ->
-                turnSpark.configure(
+                turnNEO.configure(
                     turnConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
 
 
@@ -203,6 +210,12 @@ public class ModuleIODrive
          // Create timestamp queue
         timestampQueue = DriveOdometry.PhoenixOdometry.getInstance().makeTimestampQueue();
 
+
+    }
+
+
+  @Override
+  public void updateInputs(ModuleIOInputs inputs) {
         // Create drive status signals
         drivePosition = driveTalon.getPosition();
         drivePositionQueue =
@@ -211,6 +224,33 @@ public class ModuleIODrive
         driveAppliedVolts = driveTalon.getMotorVoltage();
         driveCurrent = driveTalon.getStatorCurrent();
 
+
+         // Update turn inputs
+        DriveUtil.sparkUtil.sparkStickyFault = false;
+        ifOk(
+            turnNEO,
+            cancoder::getPosition,
+            (value) -> inputs.turnPosition = new Rotation2d(value).minus(zeroRotation));
+        ifOk(turnNEO, cancoder::getVelocity, (value) -> inputs.turnVelocityRadPerSec = value);
+        ifOk(
+            turnNEO,
+            new DoubleSupplier[] {turnNEO::getAppliedOutput, turnNEO::getBusVoltage},
+            (values) -> inputs.turnAppliedVolts = values[0] * values[1]);
+        ifOk(turnNEO, turnNEO::getOutputCurrent, (value) -> inputs.turnCurrentAmps = value);
+        inputs.turnConnected = turnConnectedDebounce.calculate(!DriveUtil.sparkUtil.sparkStickyFault);
+
+        // Update odometry inputs
+        inputs.odometryTimestamps =
+            timestampQueue.stream().mapToDouble((Double value) -> value).toArray();
+        inputs.odometryDrivePositionsRad =
+            drivePositionQueue.stream().mapToDouble((Double value) -> value).toArray();
+        inputs.odometryTurnPositions =
+            turnPositionQueue.stream()
+                .map((Double value) -> new Rotation2d(value).minus(zeroRotation))
+                .toArray(Rotation2d[]::new);
+        timestampQueue.clear();
+        drivePositionQueue.clear();
+        turnPositionQueue.clear();
     }
 
 
