@@ -45,7 +45,6 @@ public class DriveConstants
     // // Drive motor configuration
     //Drive Config
     public static final Slot0Configs driveGains = new Slot0Configs().withKP(0.1).withKI(0).withKD(0.1).withKS(0.4).withKV(0.124);
-    
     public static final ClosedLoopOutputType driveClosedLoopOutput = ClosedLoopOutputType.Voltage;
     public static final Current slipCurrent = edu.wpi.first.units.Units.Amps.of(120);
     public static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration();
@@ -113,6 +112,7 @@ public class DriveConstants
     public static final Angle kFrontLeftEncoderOffset = Units.Rotations.of(0);
     public static final boolean kFrontLeftSteerMotorInverted = true;
     public static final boolean kFrontLeftCANcoderInverted = false;
+    public static final boolean kFrontLeftDriveInverted = false;
     
     public static final Distance kFrontLeftXPos = Units.Inches.of(17);//forward positive
     public static final Distance kFrontLeftYPos = Units.Inches.of(17);//left positive
@@ -125,6 +125,7 @@ public class DriveConstants
     public static final Angle kFrontRightEncoderOffset = Units.Rotations.of(0);
     public static final boolean kFrontRightSteerMotorInverted = true;
     public static final boolean kFrontRightCANcoderInverted = false;
+    public static final boolean kFrontRightDriveInverted = false;
     
     public static final Distance kFrontRightXPos = Units.Inches.of(17);
     public static final Distance kFrontRightYPos = Units.Inches.of(-17);
@@ -137,7 +138,8 @@ public class DriveConstants
     public static final Angle kBackLeftEncoderOffset = Units.Rotations.of(0);
     public static final boolean kBackLeftSteerMotorInverted = true;
     public static final boolean kBackLeftCANcoderInverted = false;
-    
+    public static final boolean kBackLeftDriveInverted = false;
+
     public static final Distance kBackLeftXPos = Units.Inches.of(-17);
     public static final Distance kBackLeftYPos = Units.Inches.of(17);
     
@@ -149,7 +151,8 @@ public class DriveConstants
     public static final Angle kBackRightEncoderOffset = Units.Rotations.of(0);
     public static final boolean kBackRightSteerMotorInverted = true;
     public static final boolean kBackRightCANcoderInverted = false;
-    
+    public static final boolean kBackRightDriveInverted = false;
+
     public static final Distance kBackRightXPos = Units.Inches.of(-17);
     public static final Distance kBackRightYPos = Units.Inches.of(-17);
 

@@ -1,23 +1,29 @@
 package frc.robot.subsystems.simulation;
 
 import static frc.robot.subsystems.drive.DriveConstants.kBackLeftZeroRotation;
+import static frc.robot.subsystems.drive.DriveConstants.kBackRightDriveInverted;
 import static frc.robot.subsystems.drive.DriveConstants.kBackRightZeroRotation;
+import static frc.robot.subsystems.drive.DriveConstants.kFrontLeftDriveInverted;
 import static frc.robot.subsystems.drive.DriveConstants.kFrontRightZeroRotation;
 import static frc.robot.subsystems.drive.DriveConstants.kFrontLeftZeroRotation;
+import static frc.robot.subsystems.drive.DriveConstants.kFrontRightDriveInverted;
 import static frc.robot.subsystems.drive.DriveConstants.kFrontLeftSteerMotorId;
+import static frc.robot.subsystems.drive.DriveConstants.kFrontLeftSteerMotorInverted;
 import static frc.robot.subsystems.drive.DriveConstants.kFrontRightSteerMotorId;
+import static frc.robot.subsystems.drive.DriveConstants.kFrontRightSteerMotorInverted;
 import static frc.robot.subsystems.drive.DriveConstants.kBackLeftSteerMotorId;
+import static frc.robot.subsystems.drive.DriveConstants.kBackLeftSteerMotorInverted;
 import static frc.robot.subsystems.drive.DriveConstants.kBackRightSteerMotorId;
+import static frc.robot.subsystems.drive.DriveConstants.kBackRightSteerMotorInverted;
 import static frc.robot.subsystems.drive.DriveConstants.kFrontLeftDriveMotorId;
 import static frc.robot.subsystems.drive.DriveConstants.kFrontLeftEncoderId;
 import static frc.robot.subsystems.drive.DriveConstants.kFrontRightDriveMotorId;
 import static frc.robot.subsystems.drive.DriveConstants.kFrontRightEncoderId;
+import static frc.robot.subsystems.drive.DriveConstants.kBackLeftDriveInverted;
 import static frc.robot.subsystems.drive.DriveConstants.kBackLeftDriveMotorId;
 import static frc.robot.subsystems.drive.DriveConstants.kBackLeftEncoderId;
 import static frc.robot.subsystems.drive.DriveConstants.kBackRightDriveMotorId;
 import static frc.robot.subsystems.drive.DriveConstants.kBackRightEncoderId;
-
-import stat
 
 import static frc.robot.util.DriveUtil.*;
 
@@ -155,14 +161,20 @@ public class ModuleIODrive implements ModuleIO
     // Configure drive motor
     var driveConfig = DriveConstants.driveInitialConfigs;
     driveConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-    driveConfig.Slot0 = constants.DriveMotorGains;
-    driveConfig.Feedback.SensorToMechanismRatio = constants.DriveMotorGearRatio;
-    driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = constants.SlipCurrent;
-    driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -constants.SlipCurrent;
-    driveConfig.CurrentLimits.StatorCurrentLimit = constants.SlipCurrent;
+    driveConfig.Slot0 = DriveConstants.driveGains;
+    driveConfig.Feedback.SensorToMechanismRatio = DriveConstants.driveGearRatio;
+    driveConfig.TorqueCurrent.PeakForwardTorqueCurrent = DriveConstants.slipCurrent.magnitude();
+    driveConfig.TorqueCurrent.PeakReverseTorqueCurrent = -DriveConstants.slipCurrent.magnitude();
+    driveConfig.CurrentLimits.StatorCurrentLimit = DriveConstants.slipCurrent.magnitude();
     driveConfig.CurrentLimits.StatorCurrentLimitEnable = true;
     driveConfig.MotorOutput.Inverted =
-        constants.DriveMotorInverted
+        switch(module) {
+          case 0 -> kFrontLeftDriveInverted;
+          case 1 -> kFrontRightDriveInverted;
+          case 2 -> kBackLeftDriveInverted;
+          case 3 -> kBackRightDriveInverted;
+          default -> false;
+        }
             ? InvertedValue.Clockwise_Positive
             : InvertedValue.CounterClockwise_Positive;
     tryUntilOk(5, () -> driveTalon.getConfigurator().apply(driveConfig, 0.25));
@@ -171,19 +183,25 @@ public class ModuleIODrive implements ModuleIO
     // Configure turn motor
     var turnConfig = new SparkMaxConfig();
     turnConfig
-        .inverted(turnInverted)
+        .inverted(
+          switch(module) {
+            case 0 -> kFrontLeftSteerMotorInverted;
+            case 1 -> kFrontRightSteerMotorInverted;
+            case 2 -> kBackLeftSteerMotorInverted;
+            case 3 -> kBackRightSteerMotorInverted;
+            default -> false;
+          }
+        )
         .idleMode(IdleMode.kBrake)
-        .smartCurrentLimit(turnMotorCurrentLimit)
+        .smartCurrentLimit(DriveConstants.turnMotorCurrentLimit)
         .voltageCompensation(12.0);
     turnConfig
-        .absoluteEncoder
-        .inverted(turnEncoderInverted)
-        .positionConversionFactor(turnEncoderPositionFactor)
-        .velocityConversionFactor(turnEncoderVelocityFactor)
-        .averageDepth(2);
+        .encoder
+        .positionConversionFactor(DriveConstants.turnEncoderPositionFactor)
+        .velocityConversionFactor(DriveConstants.turnEncoderVelocityFactor)
     turnConfig
         .closedLoop
-        .feedbackSensor(FeedbackSensor.kAbsoluteEncoder)
+        .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
         .positionWrappingEnabled(true)
         .positionWrappingInputRange(turnPIDMinInput, turnPIDMaxInput)
         .pidf(turnKp, 0.0, turnKd, 0.0);
@@ -196,12 +214,12 @@ public class ModuleIODrive implements ModuleIO
         .appliedOutputPeriodMs(20)
         .busVoltagePeriodMs(20)
         .outputCurrentPeriodMs(20);
-    tryUntilOk(
-        turnSpark,
-        5,
-        () ->
-            turnSpark.configure(
-                turnConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
+    // tryUntilOk(
+    //     turnSpark,
+    //     5,
+    //     () ->
+    //         turnSpark.configure(
+    //             turnConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
 
     // Create odometry queues
     timestampQueue = SparkOdometryThread.getInstance().makeTimestampQueue();
