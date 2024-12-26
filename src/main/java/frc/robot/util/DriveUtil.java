@@ -11,7 +11,7 @@ import com.revrobotics.spark.SparkBase;
 
 public class DriveUtil
 {
-    public static class sparkUtil
+    public class sparkUtil
     {
         /** Stores whether any error was has been detected by other utility methods. */
         public static boolean sparkStickyFault = false;
@@ -62,7 +62,7 @@ public class DriveUtil
         }
     }
 
-    public static class talonUtil
+    public class talonUtil
     {
         /** Attempts to run the command until no error is produced. */
         public static void tryUntilOk(int maxAttempts, Supplier<StatusCode> command)

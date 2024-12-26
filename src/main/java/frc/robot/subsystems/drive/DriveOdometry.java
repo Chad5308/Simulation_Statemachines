@@ -62,24 +62,32 @@ public class DriveOdometry extends Thread
     }
   
     /** Registers a Spark signal to be read from the thread. */
-    public Queue<Double> registerSignal(SparkBase spark, DoubleSupplier sparkSignal, StatusSignal<Angle> pheonixSignal)
+    public Queue<Double> registerSparkSignal(SparkBase spark, DoubleSupplier signal)
     {
+        Queue<Double> queue = new ArrayBlockingQueue<>(20);
+        Drive.odometryLock.lock();
+        try {
+        sparks.add(spark);
+        sparkSignals.add(signal);
+        sparkQueues.add(queue);
+        } finally {
+        Drive.odometryLock.unlock();
+        }
+        return queue;
+    }
+
+    /** Registers a Phoenix signal to be read from the thread. */
+    public Queue<Double> registerTalonSignal(StatusSignal<Angle> signal) {
         Queue<Double> queue = new ArrayBlockingQueue<>(20);
         signalsLock.lock();
         Drive.odometryLock.lock();
-        try
-        {
+        try {
         BaseStatusSignal[] newSignals = new BaseStatusSignal[phoenixSignals.length + 1];
         System.arraycopy(phoenixSignals, 0, newSignals, 0, phoenixSignals.length);
-        newSignals[phoenixSignals.length] = pheonixSignal;
+        newSignals[phoenixSignals.length] = signal;
         phoenixSignals = newSignals;
         phoenixQueues.add(queue);
-
-        sparks.add(spark);
-        sparkSignals.add(sparkSignal);
-        sparkQueues.add(queue);
-        } finally
-        {
+        } finally {
         signalsLock.unlock();
         Drive.odometryLock.unlock();
         }
